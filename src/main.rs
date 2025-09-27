@@ -4,11 +4,12 @@
 #![no_std]
 #![no_main]
 
-use embedded_hal::digital::OutputPin;
-use embedded_hal::delay::DelayNs;
+use embedded_hal::pwm::SetDutyCycle;
+use rp2040_hal::Clock;
+
+// use embedded_hal::delay::DelayNs;
 
 use cortex_m_rt::entry;
-// use panic_probe as _;
 use panic_halt as _;
 
 use hal::pac;
@@ -21,12 +22,16 @@ use rp2040_boot2;
 #[used]
 pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 
+// Min and max value for the PWM value
+const LOW: u16 = 0;
+const HIGH: u16 = 25000;
+
 #[entry]
 fn main() -> ! {
     rtt_init_print!();
     rprintln!("Program start");
     let mut pac = pac::Peripherals::take().unwrap();
-    // let core = pac::CorePeripherals::take().unwrap();
+    let core = pac::CorePeripherals::take().unwrap();
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
 
     // External high-speed crystal on the pico board is 12Mhz
@@ -43,9 +48,6 @@ fn main() -> ! {
     .ok()
     .unwrap();
 
-    // let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
-    let mut timer = rp2040_hal::Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
-
     // The single-cycle I/O block controls our GPIO pins
     let sio = hal::Sio::new(pac.SIO);
     let pins = hal::gpio::Pins::new(
@@ -55,14 +57,34 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    let mut led_pin = pins.gpio22.into_push_pull_output();
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+
+    // Init PWMs
+    let mut pwm_slices = hal::pwm::Slices::new(pac.PWM, &mut pac.RESETS);
+
+    // Configure PWM 3A (See RP2040 datasheet for details)
+    let pwm = &mut pwm_slices.pwm3;
+    pwm.set_ph_correct();
+    pwm.enable();
+
+    // Output channel A on PWM3 to the LED pin
+    let channel = &mut pwm.channel_a;
+    channel.output_to(pins.gpio22);
+
 
     loop {
-        rprintln!("on!");
-        led_pin.set_high().unwrap();
-        timer.delay_ms(500);
-        rprintln!("off!");
-        led_pin.set_low().unwrap();
-        timer.delay_ms(500);
+        rprintln!("Ramp up!");
+        for i in (LOW..=HIGH).skip(3000) {
+            delay.delay_us(1);
+            let _ = channel.set_duty_cycle(i);
+        }
+
+        rprintln!("Ramp down!");
+        for i in (LOW..=HIGH).rev().skip(3000) {
+            delay.delay_us(2);
+            let _ = channel.set_duty_cycle(i);
+        }
+
+        delay.delay_ms(50);
     }
 }
