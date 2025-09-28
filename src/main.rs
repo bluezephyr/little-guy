@@ -74,17 +74,18 @@ fn main() -> ! {
 
     loop {
         rprintln!("Ramp up!");
-        for i in (LOW..=HIGH).step_by(10) {
+        for i in (LOW..=HIGH).step_by(50) {
+            delay.delay_us(1);
+            let _ = channel.set_duty_cycle(i);
+        }
+        delay.delay_ms(50);
+
+        rprintln!("Ramp down!");
+        for i in (LOW..=HIGH).rev().step_by(5) {
             delay.delay_us(1);
             let _ = channel.set_duty_cycle(i);
         }
 
-        rprintln!("Ramp down!");
-        for i in (LOW..=HIGH).rev().step_by(8) {
-            delay.delay_us(2);
-            let _ = channel.set_duty_cycle(i);
-        }
-
-        delay.delay_ms(400);
+        delay.delay_ms(600);
     }
 }
