@@ -23,7 +23,7 @@ pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 
 // Min and max value for the PWM value
 const LOW: u16 = 0;
-const HIGH: u16 = 25000;
+const HIGH: u16 = u16::MAX;
 
 #[entry]
 fn main() -> ! {
@@ -70,20 +70,21 @@ fn main() -> ! {
     let channel = &mut pwm.channel_a;
     channel.output_to(pins.gpio22);
 
+    rprintln!("Max duty cycle: {}", channel.max_duty_cycle());
 
     loop {
         rprintln!("Ramp up!");
-        for i in (LOW..=HIGH).skip(10000) {
-            // delay.delay_us(1);
-            let _ = channel.set_duty_cycle(i);
-        }
-
-        rprintln!("Ramp down!");
-        for i in (LOW..=HIGH).rev().skip(1000) {
+        for i in (LOW..=HIGH).step_by(10) {
             delay.delay_us(1);
             let _ = channel.set_duty_cycle(i);
         }
 
-        delay.delay_ms(500);
+        rprintln!("Ramp down!");
+        for i in (LOW..=HIGH).rev().step_by(8) {
+            delay.delay_us(2);
+            let _ = channel.set_duty_cycle(i);
+        }
+
+        delay.delay_ms(400);
     }
 }
