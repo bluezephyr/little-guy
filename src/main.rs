@@ -4,20 +4,19 @@
 #![no_std]
 #![no_main]
 
+use rtt_target::{rprintln, rtt_init_print};
 use embedded_hal::pwm::SetDutyCycle;
-use rp2040_hal::Clock;
-
-// use embedded_hal::delay::DelayNs;
 
 use cortex_m_rt::entry;
 use panic_halt as _;
 
 use hal::pac;
 use rp2040_hal as hal;
+use rp2040_hal::Clock;
 
-use rtt_target::{rprintln, rtt_init_print};
 
 use rp2040_boot2;
+
 #[link_section = ".boot2"]
 #[used]
 pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
@@ -74,17 +73,17 @@ fn main() -> ! {
 
     loop {
         rprintln!("Ramp up!");
-        for i in (LOW..=HIGH).skip(3000) {
-            delay.delay_us(1);
+        for i in (LOW..=HIGH).skip(10000) {
+            // delay.delay_us(1);
             let _ = channel.set_duty_cycle(i);
         }
 
         rprintln!("Ramp down!");
-        for i in (LOW..=HIGH).rev().skip(3000) {
-            delay.delay_us(2);
+        for i in (LOW..=HIGH).rev().skip(1000) {
+            delay.delay_us(1);
             let _ = channel.set_duty_cycle(i);
         }
 
-        delay.delay_ms(50);
+        delay.delay_ms(500);
     }
 }
